@@ -1,7 +1,7 @@
 #!/bin/bash
-APKTOOL=~/bin/apktool.jar
-SIGNAPK=~/bin/signapk.jar
-PUPLIC_KEY=~/bin/testkey.x509.pem
+APKTOOL=./bin/apktool.jar
+SIGNAPK=./bin/signapk.jar
+PUPLIC_KEY=./bin/testkey.x509.pem
 PRIVATE_KEY=~/bin/testkey.pk8
 
 # Exclude from this array your preferred language(s) (excluded: "ru" "uk")
@@ -161,7 +161,8 @@ echo "   Done"
 decompile() {
 echo "Decompiling..."
 echo "   File: $input_file"
-output_file=$(echo $input_file | sed s/.apk//)
+filename=$(echo $input_file | awk -F. '{print $NF}')
+output_file=$(echo $input_file | sed s/.$filename//)
 java -jar -Xmx512M $APKTOOL d -o $output_file $src $force $res $input_file 1>>/dev/null
 if [ "$?" != "0" ]; then
 	echo "----------"
