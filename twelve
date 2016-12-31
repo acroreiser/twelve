@@ -225,7 +225,7 @@ compile() {
 
 	mkdir ${output_file%/*}/sys &>>/dev/null
 	cp -a $output_file ${output_file%/*}/sys/$file
-	7za a -tzip ${output_file%/*}/sys/$file ${output_file%/*}/original &>>/dev/null
+	7za a -tzip ${output_file%/*}/sys/$file ${output_file%/*}/original/* &>>/dev/null
 	
 	echo "	System APK stored in [${output_file%/*}/sys/$file]!"
 	echo "   Done"
