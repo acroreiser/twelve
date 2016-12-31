@@ -255,7 +255,7 @@ build_install() {
 
 install_apk() {
 	echo "Installing..."
-	echo "   File: $input_file"
+	echo "   File: [$input_file]"
 
 	sudo adb install -r -d $input_file #1>>/dev/null
 	
@@ -267,8 +267,10 @@ install_apk() {
 	
 	echo "   Done"
 }
-
-while getopts "hd:RUgfSc:b:s:I:L:i:F:" opt
+# Preparing to work
+OPERATION=
+# Entering TwelVe.
+while getopts "hdRUgfScbsILiF" opt
 do
 case $opt in
 	h) usage ;;
@@ -277,15 +279,31 @@ case $opt in
 	f) force="-f";;
 	U) tmpfs="yes";;
 	g) GIT="yes";;
-	L) input_file=$OPTARG && language_purge;;
-	F) input_file=$OPTARG && framework_install;;
-	b) input_file=$OPTARG && build;;
-	c) input_file=$OPTARG && compile;;
-	I) input_file=$OPTARG && build_install;;
-	i) input_file=$OPTARG && install_apk;;
-	s) input_file=$OPTARG && sign;;
-	d) input_file=$OPTARG && decompile;;
-
+	L) OPERATION=lngpurge;;
+	F) OPERATION=framework_install;;
+	b) OPERATION=build;;
+	c) OPERATION=compile;;
+	I) OPERATION=build_install;;
+	i) OPERATION=install_apk;;
+	s) OPERATION=sign;;
+	d) OPERATION=decompile;;
 esac
 done
 
+input_file=$(readlink -f ${@: -1})
+if [ -f "$input_file" ]; then
+	case $OPERATION in
+		lngpurge) language_purge;;
+		compile) compile;;
+		decompile) decompile;;
+		build) build;;
+		build_install) build_install;;
+		install_apk) install_apk;;
+		sign) sign;;
+	esac
+else
+	echo "File [$input_file] does not exists!"
+	echo "	FAILED!"
+	exit 1
+fi
+exit 0
