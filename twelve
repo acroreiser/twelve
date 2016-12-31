@@ -91,7 +91,8 @@ revert_lang() {
 }
 
 
-
+# Purge unwanted locales from package.
+# Very ugle function, will be reworked.
 language_purge() {
 	echo "Purging languages..."
 	echo "   File: $input_file"
@@ -161,6 +162,8 @@ language_purge() {
 	exit 0
 }
 
+# Install framework resources
+# It's needed for {de}compilation Android packages
 framework_install() {
 	echo "Installing framework..."
 	echo "   File: $input_file"
@@ -175,6 +178,7 @@ framework_install() {
 	echo "   Done"
 }
 
+# Decompile package
 decompile() {
 	echo "Decompiling..."
 	echo "   File: $input_file"
@@ -203,6 +207,7 @@ decompile() {
 	echo "   Done"
 }
 
+# Just compile package
 compile() {
 	echo "Building..."
 	echo "   File: $input_file"
@@ -220,6 +225,7 @@ compile() {
 	echo "   Done"
 }
 
+# Just sign file with testkey
 sign() {
 echo "Signing..."
 echo "   File: $input_file"
@@ -236,6 +242,7 @@ fi
 echo "   Done"
 }
 
+# Compile and sign file
 build() {
 	compile
 	input_file=$output_file
@@ -251,11 +258,13 @@ build() {
 	echo "File: $input_file"
 }
 
+# Compile, sign and install apk on connected via ADB device
 build_install() {
 	build
 	install_apk
 }
 
+# Just install file on connected via ADB device (root access needed for adb)
 install_apk() {
 	echo "Installing..."
 	echo "   File: [$input_file]"
@@ -270,10 +279,13 @@ install_apk() {
 	
 	echo "   Done"
 }
+
+# !!!! Entering TwelVe. !!!!
+
 # Preparing to work
 OPERATION=
 MEM=512
-# Entering TwelVe.
+
 while getopts "hdRUgfSm:cbsILiF" opt
 do
 case $opt in
