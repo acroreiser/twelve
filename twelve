@@ -1,0 +1,260 @@
+#!/bin/bash
+APKTOOL=~/bin/apktool.jar
+SIGNAPK=~/bin/signapk.jar
+PUPLIC_KEY=~/bin/testkey.x509.pem
+PRIVATE_KEY=~/bin/testkey.pk8
+
+# Exclude from this array your preferred language(s) (excluded: "ru" "uk")
+lang=("af" "am" "ar" "az" "ba" "be" "bg" "bn" "bs" "ca" "cs" "da" "de" "el" "en" "es" "et" "eu" "fa" "fi" "fr" "gl" "gu" "he" "hi" "hr" "hu" "hy" "id" "in" "it" "is" "iw" "ja" "ka" "ko" "kk" "km" "kn" "ky" "kz" "lo" "lt" "lv" "mk" "ml" "mn" "mr" "ms" "ne" "nb" "nl" "no" "pa" "pl" "pt" "rm" "ro" "si" "sk" "sl" "sq" "sr" "sv" "sw" "ta" "te" "tl" "th" "tr" "tt" "ur" "uz" "vi" "zh" "zu")
+lngs=75 # -2
+
+usage() {
+	echo "Twelve v2.1 - a tiny wrapper for ApkTool, SignApk & ADB."
+	echo "Written by A\$teroid (acroreiser@gmail.com)"
+    echo "Usage:"
+	echo "	twelve -d [-R] [-S] [-f] <file_apk> - decompile apk-file."
+	echo "	-R             Do not decode resources."
+	echo "	-S             Do not decode sources."
+	echo "	-f             Force delete destination directory."
+	echo 
+	echo "	twelve -c [-f] <app_path> - compile apk-file."
+	echo "	-f             Skip changes detection and build all files."
+	echo
+	echo "	twelve -F <framework.apk> - install framework. Do it before first operation with apk."
+	echo "	twelve -s <apk_file> - sign apk-file."
+	echo "	twelve -i <apk_file> - install apk-file on connected via USB (ADB) device."
+	echo "	twelve -b [-f] <app_path> - compile & sign apk-file."
+	echo "	twelve -I [-f] <app_path> - compile, sign & install apk-file on connected via USB (ADB) device."
+	echo "	twelve -L [-U] <apk_file> - strip unneeded languages from apk-file."
+	echo "	-U             Use /tmp/apkname folder for speed up strip operation"
+exit 0
+}
+
+
+
+zh_langs_workaround() {
+		mv $input_file2/res/values-zh $lngtmp &>>/dev/null
+		mv $input_file2/res/values-zh-rCN $lngtmp &>>/dev/null
+		mv $input_file2/res/values-zh-rHK $lngtmp &>>/dev/null
+		mv $input_file2/res/values-zh-rTW $lngtmp &>>/dev/null
+		if [ -e $input_file2/res/raw-${lang[$counter]} ];
+		then
+			mv $input_file2/res/raw-zh $lngtmp &>>/dev/null
+		fi
+		if [ -e $input_file2/res/xml-${lang[$counter]} ];
+		then
+			mv $input_file2/res/xml-zh $lngtmp &>>/dev/null
+		fi
+}
+
+remove_lang() {
+		cp $input_file2/res/values-${lang[$counter]}-* $lngtmp &>>/dev/null
+		rm -fr $input_file2/res/values-${lang[$counter]}-*
+		mv $input_file2/res/values-${lang[$counter]} $lngtmp &>>/dev/null
+
+		if [ -e $input_file2/res/raw-${lang[$counter]} ];
+		then
+			mv $input_file2/res/raw-${lang[$counter]} $lngtmp &>>/dev/null
+		fi
+		if [ -e $input_file2/res/xml-${lang[$counter]} ];
+		then
+			mv $input_file2/res/xml-${lang[$counter]} $lngtmp &>>/dev/null
+		fi
+}
+
+zh_wa_revert() {
+		mv $lngtmp/values-zh $input_file2/res &>>/dev/null
+		mv $lngtmp/values-zh-rCN $input_file2/res &>>/dev/null
+		mv $lngtmp/values-zh-rHK $input_file2/res &>>/dev/null
+		mv $lngtmp/values-zh-rTW $input_file2/res &>>/dev/null
+}
+
+revert_lang() {
+			mv $lngtmp/values-${lang[$counter]} $input_file2/res &>>/dev/null
+			cp $lngtmp/values-${lang[$counter]}-* $input_file2/res &>>/dev/null
+			rm -rf $lngtmp/values-${lang[$counter]}-*
+			if [ -e $lngtmp/raw-${lang[$counter]} ];
+			then
+				mv $lngtmp/raw-${lang[$counter]} $input_file2/res &>>/dev/null
+			fi
+			if [ -e $lngtmp/xml-${lang[$counter]} ];
+			then
+				mv $lngtmp/xml-${lang[$counter]} $input_file2/res &>>/dev/null
+			fi
+}
+
+
+
+language_purge() {
+echo "Purging languages..."
+echo "   File: $input_file"
+if [ "$tmpfs" == "yes" ]
+then
+	dist=$input_file
+	mkdir -n /tmp/twelve &>>/dev/null
+	output_file=/tmp/twelve/$(rand)
+	input_file2=$output_file
+else
+	input_file2=$(echo $input_file | sed s/.apk//)
+	output_file=$(echo $input_file | sed s/.apk//)
+fi
+java -jar -Xmx512M $APKTOOL d -s -o $output_file -f $input_file 1>>/dev/null
+if [ "$?" != "0" ]; then
+	echo "----------"
+	echo "DECOMPILATION FAILED"
+	exit 7
+fi
+
+output_file2=$(echo $output_file/out.apk)
+lngtmp=$input_file2/langs_tmp
+mkdir $lngtmp
+counter=0
+
+while [ $counter -le $lngs ]
+do
+	counter2=0
+	while [ $counter2 -le 4 ]
+	do
+		if [[ -e $input_file2/res/values-${lang[$counter]} ]] ;
+		then
+			remove_lang
+		fi
+		let "counter += 1"
+		let "counter2 += 1"
+	done
+	java -jar -Xmx512M $APKTOOL b -f $input_file2 -o $output_file2 &>>/dev/null
+	if [ "$?" != "0" ]; 
+	then
+		let "counter -= 5"
+		counter2=0
+		while [ $counter2 -le 4 ]
+		do
+			if [[ -e $input_file2/res/values-${lang[$counter]} ]] ;
+			then
+				revert_lang
+			fi
+			let "counter += 1"
+			let "counter2 += 1"
+		done
+	else
+		rm $output_file2
+	fi
+done
+java -jar -Xmx512M $APKTOOL b -f $input_file2 -o $output_file2 &>>/dev/null
+java -jar -Xmx512M $SIGNAPK $PUPLIC_KEY $PRIVATE_KEY $output_file2 $dist
+rm -fr $input_file2
+echo "   Done"
+}
+
+framework_install() {
+echo "Installing framework..."
+echo "   File: $input_file"
+java -jar -Xmx512M $APKTOOL if $input_file 
+if [ "$?" != "0" ]; then
+	echo "----------"
+	echo "FRAMEWORK FAILED"
+	exit 5
+fi
+echo "   Done"
+}
+
+decompile() {
+echo "Decompiling..."
+echo "   File: $input_file"
+output_file=$(echo $input_file | sed s/.apk//)
+java -jar -Xmx512M $APKTOOL d -o $output_file $src $force $res $input_file 1>>/dev/null
+if [ "$?" != "0" ]; then
+	echo "----------"
+	echo "DECOMPILATION FAILED"
+	exit 4
+fi
+if [ "$GIT" = "yes" ]; then
+	workingdir=$(pwd)
+	echo "Initializing git repository..."
+    git init $output_file 1>>/dev/null
+	cd $output_file
+	git add .
+	git commit -m "init" 1>>/dev/null
+	cd $workingdir
+fi
+echo "   Done"
+}
+
+compile() {
+echo "Building..."
+echo "   File: $input_file"
+output_file=$(echo $input_file/out.apk)
+java -jar -Xmx512M $APKTOOL b $force $input_file -o $output_file 1>>/dev/null
+if [ "$?" != "0" ]; then
+	echo "----------"
+	echo "BUILD FAILED"
+	exit 1
+fi
+echo "   Done"
+}
+
+sign() {
+echo "Signing..."
+echo "   File: $input_file"
+output_file=$(echo $input_file | sed s/.apk/-signed.apk/)
+java -jar -Xmx512M $SIGNAPK $PUPLIC_KEY $PRIVATE_KEY $input_file $output_file
+if [ "$?" != "0" ]; then
+	echo "----------"
+	echo "SIGNING FAILED"
+	exit 2
+fi
+echo "   Done"
+}
+
+build() {
+compile
+input_file=$output_file
+sign
+input_file=$output_file
+if [ "$?" != "0" ]; then
+	echo "----------"
+	echo "BUILD FAILED"
+	exit 6
+fi
+echo "Build successful!"
+echo "File: $input_file"
+}
+
+build_install() {
+build
+install_apk
+}
+
+install_apk() {
+echo "Installing..."
+echo "   File: $input_file"
+sudo adb install -r -d $input_file #1>>/dev/null
+if [ "$?" != "0" ]; then
+	echo "----------"
+	echo "INSTALL FAILED"
+	exit 3
+fi
+echo "   Done"
+}
+
+while getopts "hd:RUgfSc:b:s:I:L:i:F:" opt
+do
+case $opt in
+h) usage ;;
+R) res="-r";;
+S) src="-s";;
+f) force="-f";;
+U) tmpfs="yes";;
+g) GIT="yes";;
+L) input_file=$OPTARG && language_purge;;
+F) input_file=$OPTARG && framework_install;;
+b) input_file=$OPTARG && build;;
+c) input_file=$OPTARG && compile;;
+I) input_file=$OPTARG && build_install;;
+i) input_file=$OPTARG && install_apk;;
+s) input_file=$OPTARG && sign;;
+d) input_file=$OPTARG && decompile;;
+
+esac
+done
+
