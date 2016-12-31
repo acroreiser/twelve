@@ -11,6 +11,7 @@ lngs=75 # -2
 usage() {
 	echo "Twelve v2.1 - a tiny wrapper for ApkTool, SignApk & ADB."
 	echo "Written by A\$teroid (acroreiser@gmail.com)"
+	echo ""
     echo "Usage:"
 	echo "	twelve -d [-R] [-S] [-f] <file_apk> - decompile apk-file."
 	echo "	-R             Do not decode resources."
@@ -27,6 +28,8 @@ usage() {
 	echo "	twelve -I [-f] <app_path> - compile, sign & install apk-file on connected via USB (ADB) device."
 	echo "	twelve -L [-U] <apk_file> - strip unneeded languages from apk-file."
 	echo "	-U             Use /tmp/apkname folder for speed up strip operation"
+	echo ""
+	echo "	-m <heapsize>  Set Java heapsize(in megabytes) for operation (512 by default)" 
 exit 0
 }
 
@@ -104,7 +107,7 @@ language_purge() {
 		output_file=$(echo $input_file | sed s/.apk//)
 	fi
 	
-	java -jar -Xmx512M $APKTOOL d -s -o $output_file -f $input_file 1>>/dev/null
+	java -jar -Xmx${MEM}m $APKTOOL d -s -o $output_file -f $input_file 1>>/dev/null
 	
 	if [ "$?" != "0" ]; then
 		echo "----------"
@@ -130,7 +133,7 @@ language_purge() {
 			let "counter2 += 1"
 		done
 		
-		java -jar -Xmx512M $APKTOOL b -f $input_file2 -o $output_file2 &>>/dev/null
+		java -jar -Xmx${MEM}m $APKTOOL b -f $input_file2 -o $output_file2 &>>/dev/null
 		
 		if [ "$?" != "0" ]; 
 		then
@@ -150,8 +153,8 @@ language_purge() {
 		fi
 	done
 	
-	java -jar -Xmx512M $APKTOOL b -f $input_file2 -o $output_file2 &>>/dev/null
-	java -jar -Xmx512M $SIGNAPK $PUPLIC_KEY $PRIVATE_KEY $output_file2 $dist
+	java -jar -Xmx${MEM}m $APKTOOL b -f $input_file2 -o $output_file2 &>>/dev/null
+	java -jar -Xmx${MEM}m $SIGNAPK $PUPLIC_KEY $PRIVATE_KEY $output_file2 $dist
 	
 	rm -fr $input_file2
 	echo "   Done"
@@ -162,7 +165,7 @@ framework_install() {
 	echo "Installing framework..."
 	echo "   File: $input_file"
 
-	java -jar -Xmx512M $APKTOOL if $input_file 
+	java -jar -Xmx${MEM}m $APKTOOL if $input_file 
 
 	if [ "$?" != "0" ]; then
 		echo "----------"
@@ -179,7 +182,7 @@ decompile() {
 	filename=$(echo $input_file | awk -F. '{print $NF}')
 	output_file=$(echo $input_file | sed s/.$filename//)
 
-	java -jar -Xmx512M $APKTOOL d -o $output_file $src $force $res $input_file 1>>/dev/null
+	java -jar -Xmx${MEM}m $APKTOOL d -o $output_file $src $force $res $input_file 1>>/dev/null
 
 	if [ "$?" != "0" ]; then
 		echo "----------"
@@ -206,7 +209,7 @@ compile() {
 	
 	output_file=$(echo $input_file/out.apk)
 	
-	java -jar -Xmx512M $APKTOOL b $force $input_file -o $output_file 1>>/dev/null
+	java -jar -Xmx${MEM}m $APKTOOL b $force $input_file -o $output_file 1>>/dev/null
 	
 	if [ "$?" != "0" ]; then
 		echo "----------"
@@ -223,7 +226,7 @@ echo "   File: $input_file"
 
 output_file=$(echo $input_file | sed s/.apk/-signed.apk/)
 
-java -jar -Xmx512M $SIGNAPK $PUPLIC_KEY $PRIVATE_KEY $input_file $output_file
+java -jar -Xmx${MEM}m $SIGNAPK $PUPLIC_KEY $PRIVATE_KEY $input_file $output_file
 
 if [ "$?" != "0" ]; then
 	echo "----------"
@@ -269,8 +272,9 @@ install_apk() {
 }
 # Preparing to work
 OPERATION=
+MEM=512
 # Entering TwelVe.
-while getopts "hdRUgfScbsILiF" opt
+while getopts "hdRUgfSm:cbsILiF" opt
 do
 case $opt in
 	h) usage ;;
@@ -279,6 +283,7 @@ case $opt in
 	f) force="-f";;
 	U) tmpfs="yes";;
 	g) GIT="yes";;
+	m) MEM=$OPTARG;;
 	L) OPERATION=lngpurge;;
 	F) OPERATION=framework_install;;
 	b) OPERATION=build;;
