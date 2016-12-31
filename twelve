@@ -209,10 +209,11 @@ decompile() {
 
 # Just compile package
 compile() {
+	file=$(cat ${input_file}/apktool.yml | grep apkFileName | awk '{print $2}')
 	echo "Building..."
-	echo "   File: $input_file"
+	echo "   File: $file"
 	
-	output_file=$(echo $input_file/out.apk)
+	output_file=$(echo $input_file/$file)
 	
 	java -jar -Xmx${MEM}m $APKTOOL b $force $input_file -o $output_file 1>>/dev/null
 	
@@ -222,6 +223,11 @@ compile() {
 		exit 1
 	fi
 
+	mkdir ${output_file%/*}/sys &>>/dev/null
+	cp -a $output_file ${output_file%/*}/sys/$file
+	7za a -tzip ${output_file%/*}/sys/$file ${output_file%/*}/original &>>/dev/null
+	
+	echo "	System APK stored in [${output_file%/*}/sys/$file]!"
 	echo "   Done"
 }
 
@@ -308,7 +314,7 @@ esac
 done
 
 input_file=$(readlink -f ${@: -1} 2>>/dev/null)
-if [ -f "$input_file" ]; then
+if [ -e "$input_file" ]; then
 	case $OPERATION in
 		lngpurge) language_purge;;
 		compile) compile;;
