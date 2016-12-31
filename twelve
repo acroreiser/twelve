@@ -307,7 +307,7 @@ case $opt in
 esac
 done
 
-input_file=$(readlink -f ${@: -1})
+input_file=$(readlink -f ${@: -1} 2>>/dev/null)
 if [ -f "$input_file" ]; then
 	case $OPERATION in
 		lngpurge) language_purge;;
