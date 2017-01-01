@@ -2,7 +2,7 @@
 APKTOOL=./bin/apktool.jar
 SIGNAPK=./bin/signapk.jar
 PUPLIC_KEY=./bin/testkey.x509.pem
-PRIVATE_KEY=~/bin/testkey.pk8
+PRIVATE_KEY=./bin/testkey.pk8
 
 # Exclude from this array your preferred language(s) (excluded: "ru" "uk")
 lang=("af" "am" "ar" "az" "ba" "be" "bg" "bn" "bs" "ca" "cs" "da" "de" "el" "en" "es" "et" "eu" "fa" "fi" "fr" "gl" "gu" "he" "hi" "hr" "hu" "hy" "id" "in" "it" "is" "iw" "ja" "ka" "ko" "kk" "km" "kn" "ky" "kz" "lo" "lt" "lv" "mk" "ml" "mn" "mr" "ms" "ne" "nb" "nl" "no" "pa" "pl" "pt" "rm" "ro" "si" "sk" "sl" "sq" "sr" "sv" "sw" "ta" "te" "tl" "th" "tr" "tt" "ur" "uz" "vi" "zh" "zu")
