@@ -233,19 +233,21 @@ compile() {
 
 # Just sign file with testkey
 sign() {
-echo "Signing..."
-echo "   File: $input_file"
+	echo "Signing..."
+	echo "   File: $input_file"
 
-output_file=$(echo $input_file | sed s/.apk/-signed.apk/)
+	filename=$(echo $input_file | awk -F. '{print $NF}')
+	output_file=$(echo $input_file | sed s/.$filename/-signed.$filename/)
 
-java -jar -Xmx${MEM}m $SIGNAPK $PUPLIC_KEY $PRIVATE_KEY $input_file $output_file
+	java -jar -Xmx${MEM}m $SIGNAPK $PUPLIC_KEY $PRIVATE_KEY $input_file $output_file
 
-if [ "$?" != "0" ]; then
-	echo "----------"
-	echo "SIGNING FAILED"
-	exit 2
-fi
-echo "   Done"
+	if [ "$?" != "0" ]; then
+		echo "----------"
+		echo "SIGNING FAILED"
+		exit 2
+	fi
+	
+	echo "   Done"
 }
 
 # Compile and sign file
