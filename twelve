@@ -19,7 +19,7 @@ usage() {
 	echo "	-f             Force delete destination directory."
 	echo 
 	echo "	twelve -c [-f] <app_path> - compile apk-file."
-	echo "	-f             Skip changes detection and build all files."
+	echo "	-f             Skip changes detection and forcefully build all files."
 	echo
 	echo "	twelve -F <framework.apk> - install framework. Do it before first operation with apk."
 	echo "	twelve -s <apk_file> - sign apk-file."
@@ -31,6 +31,7 @@ usage() {
 	echo ""
 	echo "	-m <heapsize>  Set Java heapsize(in megabytes) for operation (512 by default)" 
 	echo "	-l			   Write log to twelve.log" 
+	echo "	-B			   Bypass pre-compilation checks"
 exit 0
 }
 
@@ -217,10 +218,90 @@ decompile() {
 	fi
 }
 
+# Check source directory before compilation
+check() {
+	if [ ! -f "${input_file}/apktool.yml" ]; then
+		echo -en "	\\033[1;31mWrong decompiled apk|jar directory!`$SETCOLOR_NORMAL`"
+		echo
+		SETSTATUS=$SETCOLOR_FAILURE
+	fi
+	
+	if [ "$SETSTATUS" != "$SETCOLOR_FAILURE" ]; then
+		filename=$(cat ${input_file}/apktool.yml | grep apkFileName | awk '{print $2}')
+		if [ -z "$filename" ]; then
+			echo -en "	\\033[1;31mWrong decompiled apk|jar directory!`$SETCOLOR_NORMAL`"
+			echo
+			SETSTATUS=$SETCOLOR_FAILURE
+		fi
+
+		if [ "$SETSTATUS" != "$SETCOLOR_FAILURE" ]; then
+			apkjar=$(echo $filename | awk -F. '{print $NF}')
+
+			if [ "$apkjar" = "apk" ] && [ ! -f "${input_file}/AndroidManifest.xml" ]; then
+				echo -en "	\\033[1;31mAndroid PacKage must have the AndroidManifest.xml!`$SETCOLOR_NORMAL`"
+				echo
+				SETSTATUS=$SETCOLOR_FAILURE
+			fi
+			
+			if [ "$SETSTATUS" != "$SETCOLOR_FAILURE" ]; then
+			
+				if [ "$apkjar" = "apk" ] && [ ! -d "${input_file}/res"  ]; then
+					echo -en "	\\033[1;33mAPK doesn't have resources?`$SETCOLOR_NORMAL`"
+					echo
+					if [ "$force" = "-f" ]; then
+						echo -en "	\\033[1;33mProceeding forcefully...`$SETCOLOR_NORMAL`"
+						echo
+						SETSTATUS=$SETCOLOR_WARNING
+					else
+						echo "Use [-f] to proceed anyway"
+						SETSTATUS=$SETCOLOR_FAILURE
+					fi
+				fi
+				
+				if [ "$SETSTATUS" != "$SETCOLOR_FAILURE" ]; then
+					if [ "$apkjar" = "apk" ] && [ ! -d "${input_file}/smali"  ]; then
+						echo -en "	\\033[1;33mAPK doesn't have sources!`$SETCOLOR_NORMAL`"
+						echo
+						echo "	Maybe it's framework-res or overlay?"
+						SETSTATUS=$SETCOLOR_WARNING
+					fi
+	
+					if [ "$SETSTATUS" != "$SETCOLOR_FAILURE" ]; then
+					
+						if [ "$apkjar" = "jar" ] && [ ! -d "${input_file}/smali"  ]; then
+							echo -en "	\\033[1;33mJAR doesn't have code?`$SETCOLOR_NORMAL`"
+							echo
+							if [ "$force" = "-f" ]; then
+								echo -en "	\\033[1;33mProceeding forcefully...`$SETCOLOR_NORMAL`"
+								echo
+								SETSTATUS=$SETCOLOR_WARNING
+							else
+								echo "Use [-f] to proceed anyway"
+								SETSTATUS=$SETCOLOR_FAILURE
+							fi
+						fi
+					fi
+				fi
+			fi
+		fi
+	fi
+	
+	echo -n "   Checking source directory  $(tput hpa $(tput cols))$(tput cub 6)[`$SETSTATUS``$SETCOLOR_NORMAL`]"
+	echo
+	if [ "$SETSTATUS" = "$SETCOLOR_FAILURE" ]; then
+		exit 1
+	fi
+}
+
 # Just compile package
 compile() {
-	filename=$(cat ${input_file}/apktool.yml | grep apkFileName | awk '{print $2}')
-	apkjar=$(echo $filename | awk -F. '{print $NF}')
+	if [ "$bypass_check" = "no" ]; then
+		check
+	else
+		echo -en "\\033[1;33mSource directory checks bypassed!`$SETCOLOR_NORMAL`"
+		echo
+	fi 
+	
 	source_dir=$input_file
 	output_file=$(echo $input_file/$filename)
 	
@@ -333,20 +414,23 @@ install_apk() {
 # !!!! Entering TwelVe. !!!!
 
 SETCOLOR_SUCCESS="echo -en \\033[1;32mOK"
-SETCOLOR_FAILURE="echo -en \\033[1;31mfail"
+SETCOLOR_FAILURE="echo -en \\033[1;31mERR"
+SETCOLOR_WARNING="echo -en \\033[1;33mWARN"
 SETCOLOR_NORMAL="echo -en \\033[0;39m"
-SETSTATUS=
+SETSTATUS=$SETCOLOR_SUCCESS
 # Preparing to work
 OPERATION=
 MEM=512
+bypass_check="no"
 
-while getopts "hdRUglfSm:cbsILiF" opt
+while getopts "hdRUglfBSm:cbsILiF" opt
 do
 case $opt in
 	h) usage ;;
 	R) res="-r";;
 	S) src="-s";;
 	f) force="-f";;
+	B) bypass_check="yes";;
 	U) tmpfs="yes";;
 	g) GIT="yes";;
 	l) LOGGING="yes";;
@@ -371,22 +455,22 @@ fi
 	
 input_file=$(readlink -f ${@: -1} 2>>$LOG)
 
+
 echo `date` > $LOG
 echo "Operation: $OPERATION" >> $LOG
 echo "File: $input_file" >> $LOG
 
-if [ -e "$input_file" ]; then
+if [ "$input_file" != "" ]; then
 	case $OPERATION in
-		lngpurge) echo "Operation: Purge unneeded languages" && language_purge;;
-		compile) echo "Operation: Compile $(echo $(cat ${input_file}/apktool.yml | grep apkFileName | awk '{print $2}') | awk -F. '{print $NF}')-file" && compile;;
-		decompile) echo "Operation: Decompile $(echo $input_file | awk -F. '{print $NF}')-file" && decompile;;
-		build) echo "Operation: Build $(echo $(cat ${input_file}/apktool.yml | grep apkFileName | awk '{print $2}') | awk -F. '{print $NF}')-file" && build;;
-		build_install) echo "Operation: Build and Install apk-file" && build_install;;
-		install_apk)  echo "Operation: Install apk-file" && install_apk;;
+		lngpurge) echo "Operation: Purge unneeded languages"; language_purge;;
+		compile) echo "Operation: Compile $(echo $(cat ${input_file}/apktool.yml | grep apkFileName | awk '{print $2}') | awk -F. '{print $NF}')-file"; compile;;
+		decompile) echo "Operation: Decompile $(echo $input_file | awk -F. '{print $NF}')-file"; decompile;;
+		build) echo "Operation: Build $(echo $(cat ${input_file}/apktool.yml | grep apkFileName | awk '{print $2}') | awk -F. '{print $NF}')-file"; build;;
+		build_install) echo "Operation: Build and Install apk-file"; build_install;;
+		install_apk)  echo "Operation: Install apk-file"; install_apk;;
 		sign) sign;;
 	esac
 	echo
-	
 else
 	echo "File [$input_file] does not exists!"
 	exit 1
