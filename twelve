@@ -10,7 +10,7 @@ lngs=75 # -2
 
 usage() {
 	echo "Twelve v2.2 - a tiny wrapper for ApkTool, SignApk & ADB."
-	echo "Written by A\$teroid (acroreiser@gmail.com)"
+	echo "Written by A\$teroid <acroreiser@gmail.com>"
 	echo ""
     echo "Usage:"
 	echo "	twelve -d [-R] [-S] [-f] <file_apk> - decompile apk-file."
@@ -471,8 +471,8 @@ if [ "$input_file" != "" ]; then
 		build) echo "Operation: Build $(echo $(cat ${input_file}/apktool.yml | grep apkFileName | awk '{print $2}') | awk -F. '{print $NF}')-file"; build;;
 		build_install) echo "Operation: Build and Install apk-file"; build_install;;
 		install_apk)  echo "Operation: Install apk-file"; install_apk;;
-		sign) sign;;
-		framework_install) framework_install;;
+		sign) echo "Operation: Sign file"; sign;;
+		framework_install) echo "Operation: Install framework file"; framework_install;;
 	esac
 	echo
 else
