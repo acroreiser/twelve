@@ -4,12 +4,14 @@ SIGNAPK=./bin/signapk.jar
 PUPLIC_KEY=./bin/testkey.x509.pem
 PRIVATE_KEY=./bin/testkey.pk8
 
+VERSION=2.2
+
 # Exclude from this array your preferred language(s) (excluded: "ru" "uk")
 lang=("af" "am" "ar" "az" "ba" "be" "bg" "bn" "bs" "ca" "cs" "da" "de" "el" "en" "es" "et" "eu" "fa" "fi" "fr" "gl" "gu" "he" "hi" "hr" "hu" "hy" "id" "in" "it" "is" "iw" "ja" "ka" "ko" "kk" "km" "kn" "ky" "kz" "lo" "lt" "lv" "mk" "ml" "mn" "mr" "ms" "ne" "nb" "nl" "no" "pa" "pl" "pt" "rm" "ro" "si" "sk" "sl" "sq" "sr" "sv" "sw" "ta" "te" "tl" "th" "tr" "tt" "ur" "uz" "vi" "zh" "zu")
 lngs=75 # -2
 
 usage() {
-	echo "Twelve v2.2 - a tiny wrapper for ApkTool, SignApk & ADB."
+	echo "Twelve $VERSION - a tiny wrapper for ApkTool, SignApk & ADB."
 	echo "Written by A\$teroid <acroreiser@gmail.com>"
 	echo ""
     echo "Usage:"
@@ -32,10 +34,7 @@ usage() {
 	echo "	-m <heapsize>  Set Java heapsize(in megabytes) for operation (512 by default)" 
 	echo "	-l			   Write log to twelve.log" 
 	echo "	-B			   Bypass pre-compilation checks"
-exit 0
 }
-
-
 
 zh_langs_workaround() {
 	mv $input_file2/res/values-zh $lngtmp &>>/dev/null
@@ -412,24 +411,22 @@ install_apk() {
 }
 
 # !!!! Entering TwelVe. !!!!
-if [ "$#" -lt "2" ]; then
-	usage
-fi
-
 SETCOLOR_SUCCESS="echo -en \\033[1;32mOK"
 SETCOLOR_FAILURE="echo -en \\033[1;31mERR"
 SETCOLOR_WARNING="echo -en \\033[1;33mWARN"
 SETCOLOR_NORMAL="echo -en \\033[0;39m"
 SETSTATUS=$SETCOLOR_SUCCESS
+
 # Preparing to work
 OPERATION=
 MEM=512
 bypass_check="no"
 
-while getopts "hdRUglfBSm:cbsILiF" opt
+while getopts "hdRUglfvBSm:cbsILiF" opt
 do
 case $opt in
-	h) usage ;;
+	h) usage; exit 0;;
+	v) echo $VERSION; exit 0;;
 	R) res="-r";;
 	S) src="-s";;
 	f) force="-f";;
@@ -446,9 +443,14 @@ case $opt in
 	i) OPERATION=install_apk;;
 	s) OPERATION=sign;;
 	d) OPERATION=decompile;;
-	*) usage;;
+	*) usage; exit 0;;
 esac
 done
+
+if [ "$#" -lt "2" ]; then
+	usage
+	exit 0
+fi
 
 if [ "$LOGGING" = "yes" ]; then
 	LOG="$(pwd)/twelve.log"
@@ -462,6 +464,8 @@ input_file=$(readlink -f ${@: -1} 2>>$LOG)
 echo `date` > $LOG
 echo "Operation: $OPERATION" >> $LOG
 echo "File: $input_file" >> $LOG
+
+echo "Twelve v$VERSION - a tiny wrapper for ApkTool, SignApk & ADB."
 
 if [ "$input_file" != "" ]; then
 	case $OPERATION in
