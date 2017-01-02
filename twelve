@@ -9,7 +9,7 @@ lang=("af" "am" "ar" "az" "ba" "be" "bg" "bn" "bs" "ca" "cs" "da" "de" "el" "en"
 lngs=75 # -2
 
 usage() {
-	echo "Twelve v2.1 - a tiny wrapper for ApkTool, SignApk & ADB."
+	echo "Twelve v2.2 - a tiny wrapper for ApkTool, SignApk & ADB."
 	echo "Written by A\$teroid (acroreiser@gmail.com)"
 	echo ""
     echo "Usage:"
@@ -30,6 +30,7 @@ usage() {
 	echo "	-U             Use /tmp/apkname folder for speed up strip operation"
 	echo ""
 	echo "	-m <heapsize>  Set Java heapsize(in megabytes) for operation (512 by default)" 
+	echo "	-l			   Write log to twelve.log" 
 exit 0
 }
 
@@ -91,6 +92,7 @@ revert_lang() {
 }
 
 
+# !DEPRECATED
 # Purge unwanted locales from package.
 # Very ugle function, will be reworked.
 language_purge() {
@@ -165,35 +167,45 @@ language_purge() {
 # Install framework resources
 # It's needed for {de}compilation Android packages
 framework_install() {
-	echo "Installing framework..."
-	echo "   File: $input_file"
-
-	java -jar -Xmx${MEM}m $APKTOOL if $input_file 
-
-	if [ "$?" != "0" ]; then
-		echo "----------"
-		echo "FRAMEWORK FAILED"
-		exit 5
+	echo "Framework: $input_file" >> $LOG
+	java -jar -Xmx${MEM}m $APKTOOL if $input_file  &>> $LOG
+	
+	if [ $? -eq 0 ]; then
+    	SETSTATUS=$SETCOLOR_SUCCESS
+	else
+		SETSTATUS=$SETCOLOR_FAILURE
 	fi
-	echo "   Done"
+	
+	echo -n "   Framework: $input_file  $(tput hpa $(tput cols))$(tput cub 6)[`$SETSTATUS``$SETCOLOR_NORMAL`]"
+	if [ "$SETSTATUS" = "$SETCOLOR_FAILURE" ]; then
+		echo "  Framework $input_file failed!" >> $LOG
+		echo
+		exit 1
+	fi
 }
 
 # Decompile package
 decompile() {
-	echo "Decompiling..."
-	echo "   File: $input_file"
+	apkjar=$(echo $input_file | awk -F. '{print $NF}')
+	output_file=$(echo $input_file | sed s/.$apkjar//)
 
-	filename=$(echo $input_file | awk -F. '{print $NF}')
-	output_file=$(echo $input_file | sed s/.$filename//)
+	echo "Decompile: $input_file" >> $LOG
+	java -jar -Xmx${MEM}m $APKTOOL d -o $output_file $src $force $res $input_file  &>> $LOG
 
-	java -jar -Xmx${MEM}m $APKTOOL d -o $output_file $src $force $res $input_file 1>>/dev/null
-
-	if [ "$?" != "0" ]; then
-		echo "----------"
-		echo "DECOMPILATION FAILED"
-		exit 4
+	if [ $? -eq 0 ]; then
+    	SETSTATUS=$SETCOLOR_SUCCESS
+	else
+		SETSTATUS=$SETCOLOR_FAILURE
 	fi
+	
+	echo -n "   Decompile: $input_file  $(tput hpa $(tput cols))$(tput cub 6)[`$SETSTATUS``$SETCOLOR_NORMAL`]"
 
+	if [ "$SETSTATUS" = "$SETCOLOR_FAILURE" ]; then
+		echo "  Decompiling $apkjar failed!" >> $LOG
+		echo
+		exit 1
+	fi
+	
 	if [ "$GIT" = "yes" ]; then
 		workingdir=$(pwd)
 		echo "Initializing git repository..."
@@ -203,98 +215,132 @@ decompile() {
 		git commit -m "init" 1>>/dev/null
 		cd $workingdir
 	fi
-	
-	echo "   Done"
 }
 
 # Just compile package
 compile() {
-	file=$(cat ${input_file}/apktool.yml | grep apkFileName | awk '{print $2}')
-	echo "Building..."
-	echo "   File: $file"
+	filename=$(cat ${input_file}/apktool.yml | grep apkFileName | awk '{print $2}')
+	apkjar=$(echo $filename | awk -F. '{print $NF}')
+	source_dir=$input_file
+	output_file=$(echo $input_file/$filename)
 	
-	output_file=$(echo $input_file/$file)
+	echo "Source: $input_file"
+	echo "Source: $input_file" >> $LOG
+	echo "Compile $apkjar: $output_file" >> $LOG
+
+	java -jar -Xmx${MEM}m $APKTOOL b $force $input_file -o $output_file  &>> $LOG
 	
-	java -jar -Xmx${MEM}m $APKTOOL b $force $input_file -o $output_file 1>>/dev/null
-	
-	if [ "$?" != "0" ]; then
-		echo "----------"
-		echo "BUILD FAILED"
-		exit 1
+	if [ $? -eq 0 ]; then
+		SETSTATUS=$SETCOLOR_SUCCESS
+	else
+		SETSTATUS=$SETCOLOR_FAILURE
 	fi
 
-	mkdir ${output_file%/*}/sys &>>/dev/null
-	cp -a $output_file ${output_file%/*}/sys/$file
-	7za a -tzip ${output_file%/*}/sys/$file ${output_file%/*}/original/* &>>/dev/null
+	echo -n "   Compile $apkjar: $output_file  $(tput hpa $(tput cols))$(tput cub 6)[`$SETSTATUS``$SETCOLOR_NORMAL`]"
+
+	if [ "$SETSTATUS" = "$SETCOLOR_FAILURE" ]; then
+		echo "  Compiling $apkjar failed!" >> $LOG
+		echo
+		exit 1
+	fi
 	
-	echo "	System APK stored in [${output_file%/*}/sys/$file]!"
-	echo "   Done"
+	echo "System $apkjar: $input_file" >> $LOG
+	mkdir ${output_file%/*}/sys &>>/dev/null
+	cp -a $output_file ${output_file%/*}/sys/$filename
+	7za a -tzip ${output_file%/*}/sys/$filename ${output_file%/*}/original/* &>> $LOG
+
+	if [ $? -eq 0 ]; then
+		SETSTATUS=$SETCOLOR_SUCCESS
+	else
+		SETSTATUS=$SETCOLOR_FAILURE
+	fi
+	
+	echo -n "   System $apkjar: ${output_file%/*}/sys/$filename  $(tput hpa $(tput cols))$(tput cub 6)[`$SETSTATUS``$SETCOLOR_NORMAL`]"
+	if [ "$SETSTATUS" = "$SETCOLOR_FAILURE" ]; then
+		echo "  Creating system $apkjar failed!" >> $LOG
+		echo
+		exit 2
+	fi
 }
 
 # Just sign file with testkey
-sign() {
-	echo "Signing..."
-	echo "   File: $input_file"
-
+sign() {	
 	filename=$(echo $input_file | awk -F. '{print $NF}')
 	output_file=$(echo $input_file | sed s/.$filename/-signed.$filename/)
-
-	java -jar -Xmx${MEM}m $SIGNAPK $PUPLIC_KEY $PRIVATE_KEY $input_file $output_file
-
-	if [ "$?" != "0" ]; then
-		echo "----------"
-		echo "SIGNING FAILED"
-		exit 2
+	
+	echo "Sign: $input_file" >> $LOG
+	java -jar -Xmx${MEM}m $SIGNAPK $PUPLIC_KEY $PRIVATE_KEY $input_file $output_file  2>> $LOG
+	
+	if [ $? -eq 0 ]; then
+    	SETSTATUS=$SETCOLOR_SUCCESS
+	else
+		SETSTATUS=$SETCOLOR_FAILURE
 	fi
 	
-	echo "   Done"
+	echo -n "   Sign: $output_file  $(tput hpa $(tput cols))$(tput cub 6)[`$SETSTATUS``$SETCOLOR_NORMAL`]"
+	if [ "$SETSTATUS" = "$SETCOLOR_FAILURE" ]; then
+		echo "  Signing failed!" >> $LOG
+		echo
+		exit 3
+	fi
 }
 
 # Compile and sign file
 build() {
+	echo "Build: $input_file" >> $LOG
+	
 	compile
+	echo
 	input_file=$output_file
 	sign
+	echo
 	input_file=$output_file
-	if [ "$?" != "0" ]; then
-		echo "----------"
-		echo "BUILD FAILED"
-		exit 6
+	if [ $? -eq 0 ]; then
+    	SETSTATUS=$SETCOLOR_SUCCESS
+	else
+		SETSTATUS=$SETCOLOR_FAILURE
 	fi
 	
-	echo "Build successful!"
-	echo "File: $input_file"
+	filename=$(cat ${source_dir}/apktool.yml | grep apkFileName | awk '{print $2}')
+	cp -a $input_file $source_dir/..
+	rm -f $source_dir/$filename
+	mv $input_file $source_dir/$filename
+	echo -n "   Build: $(readlink -f $source_dir/../$filename)  $(tput hpa $(tput cols))$(tput cub 6)[`$SETSTATUS``$SETCOLOR_NORMAL`]"
 }
 
 # Compile, sign and install apk on connected via ADB device
 build_install() {
+	echo "Build + Install: $input_file" >> $LOG
 	build
 	install_apk
 }
 
 # Just install file on connected via ADB device (root access needed for adb)
 install_apk() {
-	echo "Installing..."
-	echo "   File: [$input_file]"
-
-	sudo adb install -r -d $input_file #1>>/dev/null
+	echo "Install: $input_file" >> $LOG
 	
-	if [ "$?" != "0" ]; then
-		echo "----------"
-		echo "INSTALL FAILED"
-		exit 3
+	sudo adb install -r -d $input_file &>> $LOG
+	
+	if [ $? -eq 0 ]; then
+    	SETSTATUS=$SETCOLOR_SUCCESS
+	else
+		SETSTATUS=$SETCOLOR_FAILURE
 	fi
 	
-	echo "   Done"
+	echo -n "   Install: $input_file  $(tput hpa $(tput cols))$(tput cub 6)[`$SETSTATUS``$SETCOLOR_NORMAL`]"
 }
 
 # !!!! Entering TwelVe. !!!!
 
+SETCOLOR_SUCCESS="echo -en \\033[1;32mOK"
+SETCOLOR_FAILURE="echo -en \\033[1;31mfail"
+SETCOLOR_NORMAL="echo -en \\033[0;39m"
+SETSTATUS=
 # Preparing to work
 OPERATION=
 MEM=512
 
-while getopts "hdRUgfSm:cbsILiF" opt
+while getopts "hdRUglfSm:cbsILiF" opt
 do
 case $opt in
 	h) usage ;;
@@ -303,6 +349,7 @@ case $opt in
 	f) force="-f";;
 	U) tmpfs="yes";;
 	g) GIT="yes";;
+	l) LOGGING="yes";;
 	m) MEM=$OPTARG;;
 	L) OPERATION=lngpurge;;
 	F) OPERATION=framework_install;;
@@ -312,23 +359,36 @@ case $opt in
 	i) OPERATION=install_apk;;
 	s) OPERATION=sign;;
 	d) OPERATION=decompile;;
+	*) usage;;
 esac
 done
 
-input_file=$(readlink -f ${@: -1} 2>>/dev/null)
+if [ "$LOGGING" = "yes" ]; then
+	LOG="$(pwd)/twelve.log"
+else
+	LOG="/dev/null"
+fi
+	
+input_file=$(readlink -f ${@: -1} 2>>$LOG)
+
+echo `date` > $LOG
+echo "Operation: $OPERATION" >> $LOG
+echo "File: $input_file" >> $LOG
+
 if [ -e "$input_file" ]; then
 	case $OPERATION in
-		lngpurge) language_purge;;
-		compile) compile;;
-		decompile) decompile;;
-		build) build;;
-		build_install) build_install;;
-		install_apk) install_apk;;
+		lngpurge) echo "Operation: Purge unneeded languages" && language_purge;;
+		compile) echo "Operation: Compile $(echo $(cat ${input_file}/apktool.yml | grep apkFileName | awk '{print $2}') | awk -F. '{print $NF}')-file" && compile;;
+		decompile) echo "Operation: Decompile $(echo $input_file | awk -F. '{print $NF}')-file" && decompile;;
+		build) echo "Operation: Build $(echo $(cat ${input_file}/apktool.yml | grep apkFileName | awk '{print $2}') | awk -F. '{print $NF}')-file" && build;;
+		build_install) echo "Operation: Build and Install apk-file" && build_install;;
+		install_apk)  echo "Operation: Install apk-file" && install_apk;;
 		sign) sign;;
 	esac
+	echo
+	
 else
 	echo "File [$input_file] does not exists!"
-	echo "	FAILED!"
 	exit 1
 fi
 exit 0
