@@ -339,7 +339,6 @@ compile() {
 	if [ "$SETSTATUS" = "$SETCOLOR_FAILURE" ]; then
 		echo "  Creating system $apkjar failed!" >> $LOG
 		echo
-		exit 2
 	fi
 }
 
