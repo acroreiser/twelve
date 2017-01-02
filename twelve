@@ -412,6 +412,9 @@ install_apk() {
 }
 
 # !!!! Entering TwelVe. !!!!
+if [ "$#" -lt "2" ]; then
+	usage
+fi
 
 SETCOLOR_SUCCESS="echo -en \\033[1;32mOK"
 SETCOLOR_FAILURE="echo -en \\033[1;31mERR"
