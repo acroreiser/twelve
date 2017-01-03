@@ -207,12 +207,13 @@ decompile() {
 	fi
 	
 	if [ "$GIT" = "yes" ]; then
+		echo
 		workingdir=$(pwd)
 		echo "Initializing git repository..."
-    	git init $output_file 1>>/dev/null
+    	git init $output_file &>>$LOG
 		cd $output_file
 		git add .
-		git commit -m "init" 1>>/dev/null
+		git commit -m "init" &>>$LOG
 		cd $workingdir
 	fi
 }
