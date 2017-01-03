@@ -28,11 +28,15 @@ usage() {
 	echo "	-f             Skip changes detection and forcefully build all files."
 	echo ""
 	echo "	twelve -b [-f] <path_to_decompiled> - compile & sign apk-file."
-	echo "	twelve -I [-f] <path_to_decompiled> - compile, sign & install apk-file on connected via USB (ADB) device."
 	echo ""
-	echo "Misc:"
-	echo "	twelve -s <apk_file> - sign apk-file."
+	echo "Install operations:"
+	echo "	twelve -I [-f] <path_to_decompiled> - compile, sign & install apk-file on connected via USB (ADB) device."
 	echo "	twelve -i <apk_file> - install apk-file on connected via USB (ADB) device."
+	echo ""
+	echo "	twelve -F <framework_apk> - install framework apk-file for ApkTool."
+	echo ""
+	echo "Misc operations:"
+	echo "	twelve -s <apk_file> - sign apk-file."
 	echo ""
 	echo "	-m <heapsize>  Set Java heapsize(in megabytes) for operation (512 by default)" 
 	echo "	-l			   Write log to twelve.log" 
@@ -290,6 +294,9 @@ OPERATION=
 MEM=512
 bypass_check="no"
 
+echo "Twelve v$VERSION - a tiny wrapper for ApkTool, SignApk & ADB."
+echo `date`
+
 while getopts "hdRglfvBSm:cbsIiF" opt
 do
 case $opt in
@@ -331,6 +338,14 @@ if [ -f "$input_file" ]; then
 		echo -en "\\033[1;31mBuild/compile operations needs decompiled file directory!`$SETCOLOR_NORMAL`"
 		echo
 		exit 1
+	else 
+		if [ "$OPERATION" = "install_apk" ] || [ "$OPERATION" = "framework_install" ] || [ "$OPERATION" = "build_install" ] ; then
+			if [ "$(echo $input_file | awk -F. '{print $NF}')" = "jar" ] || [ "$(echo $input_file | awk -F. '{print $NF}')" != "JAR" ]; then
+				echo -en "\\033[1;31mInstall operations unavailable for JAR files!`$SETCOLOR_NORMAL`"
+				echo
+				exit 1
+			fi
+		fi
 	fi
 else if [ "$OPERATION" = "decompile" ] || [ "$OPERATION" = "install_apk" ] || [ "$OPERATION" = "framework_install" ] || [ "$OPERATION" = "sign" ]; then
 		echo -en "\\033[1;31mDecompile/sign/framework operations needs path to file, not to directory!`$SETCOLOR_NORMAL`"
@@ -339,6 +354,13 @@ else if [ "$OPERATION" = "decompile" ] || [ "$OPERATION" = "install_apk" ] || [ 
 	else 
 		if [ "$bypass_check" = "no" ]; then
 			check
+			if [ "$OPERATION" = "build_install" ] ; then
+				if [ "$(echo $input_file | awk -F. '{print $NF}')" = "jar" ] || [ "$(echo $input_file | awk -F. '{print $NF}')" != "JAR" ]; then
+					echo -en "\\033[1;31mInstall operations unavailable for JAR files!`$SETCOLOR_NORMAL`"
+					echo
+					exit 1
+				fi
+			fi
 		else
 			echo -en "\\033[1;33mSource directory checks bypassed!`$SETCOLOR_NORMAL`"
 			echo
@@ -349,8 +371,6 @@ fi
 echo `date` > $LOG
 echo "Operation: $OPERATION" >> $LOG
 echo "File: $input_file" >> $LOG
-
-echo "Twelve v$VERSION - a tiny wrapper for ApkTool, SignApk & ADB."
 
 if [ "$input_file" != "" ]; then
 	case $OPERATION in
