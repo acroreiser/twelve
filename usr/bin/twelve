@@ -1,8 +1,8 @@
 #!/bin/bash
-APKTOOL=./bin/apktool.jar
-SIGNAPK=./bin/signapk.jar
-PUPLIC_KEY=./bin/testkey.x509.pem
-PRIVATE_KEY=./bin/testkey.pk8
+APKTOOL=/opt/twelve/apktool.jar
+SIGNAPK=/opt/twelve/signapk.jar
+PUPLIC_KEY=/opt/twelve/testkey.x509.pem
+PRIVATE_KEY=/opt/twelve/testkey.pk8
 
 VERSION=2.2
 

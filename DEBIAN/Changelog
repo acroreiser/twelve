@@ -1,0 +1,7 @@
+twelve (2.2-0) stable; urgency=medium
+
+* System APK|JAR packaging
+* New output style
+* Pre-compilation checks
+* Logging feature
+
