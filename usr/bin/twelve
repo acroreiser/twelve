@@ -460,6 +460,18 @@ fi
 	
 input_file=$(readlink -f ${@: -1} 2>>$LOG)
 
+if [ -f "$input_file" ]; then
+	if [ "$OPERATION" = "compile" ] || [ "$OPERATION" = "build" ] || [ "$OPERATION" = "build_install" ]; then
+		echo -en "\\033[1;31mBuild/compile operations needs decompiled file directory!`$SETCOLOR_NORMAL`"
+		echo
+		exit 1
+	fi
+else if [ "$OPERATION" = "decompile" ] || [ "$OPERATION" = "install_apk" ] || [ "$OPERATION" = "framework_install" ] || [ "$OPERATION" = "lngpurge" ] || [ "$OPERATION" = "sign" ]; then
+		echo -en "\\033[1;31mDecompile/sign/framework operations needs path to file, not to directory!`$SETCOLOR_NORMAL`"
+		echo
+		exit 1
+	fi
+fi
 
 echo `date` > $LOG
 echo "Operation: $OPERATION" >> $LOG
