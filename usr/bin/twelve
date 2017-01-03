@@ -15,153 +15,28 @@ usage() {
 	echo "Written by A\$teroid <acroreiser@gmail.com>"
 	echo ""
     echo "Usage:"
-	echo "	twelve -d [-R] [-S] [-f] <file_apk> - decompile apk-file."
+	echo ""
+	echo "Decompile operations:"
+	echo "	twelve -d [-R|-S|-g|-f] <file> - decompile apk/jar-file."
 	echo "	-R             Do not decode resources."
 	echo "	-S             Do not decode sources."
+	echo "	-g             Init GIT repository for easily changes tracking."
 	echo "	-f             Force delete destination directory."
-	echo 
-	echo "	twelve -c [-f] <app_path> - compile apk-file."
+	echo ""
+	echo "Build operations:"
+	echo "	twelve -c [-f] <path_to_decompiled> - compile apk-file."
 	echo "	-f             Skip changes detection and forcefully build all files."
-	echo
-	echo "	twelve -F <framework.apk> - install framework. Do it before first operation with apk."
+	echo ""
+	echo "	twelve -b [-f] <path_to_decompiled> - compile & sign apk-file."
+	echo "	twelve -I [-f] <path_to_decompiled> - compile, sign & install apk-file on connected via USB (ADB) device."
+	echo ""
+	echo "Misc:"
 	echo "	twelve -s <apk_file> - sign apk-file."
 	echo "	twelve -i <apk_file> - install apk-file on connected via USB (ADB) device."
-	echo "	twelve -b [-f] <app_path> - compile & sign apk-file."
-	echo "	twelve -I [-f] <app_path> - compile, sign & install apk-file on connected via USB (ADB) device."
-	echo "	twelve -L [-U] <apk_file> - strip unneeded languages from apk-file."
-	echo "	-U             Use /tmp/apkname folder for speed up strip operation"
 	echo ""
 	echo "	-m <heapsize>  Set Java heapsize(in megabytes) for operation (512 by default)" 
 	echo "	-l			   Write log to twelve.log" 
 	echo "	-B			   Bypass pre-compilation checks"
-}
-
-zh_langs_workaround() {
-	mv $input_file2/res/values-zh $lngtmp &>>/dev/null
-	mv $input_file2/res/values-zh-rCN $lngtmp &>>/dev/null
-	mv $input_file2/res/values-zh-rHK $lngtmp &>>/dev/null
-	
-	if [ -e $input_file2/res/raw-${lang[$counter]} ];
-	then
-		mv $input_file2/res/raw-zh $lngtmp &>>/dev/null
-	fi
-	
-	if [ -e $input_file2/res/xml-${lang[$counter]} ];
-	then
-		mv $input_file2/res/xml-zh $lngtmp &>>/dev/null
-	fi
-}
-
-remove_lang() {
-	cp $input_file2/res/values-${lang[$counter]}-* $lngtmp &>>/dev/null
-	rm -fr $input_file2/res/values-${lang[$counter]}-*
-	mv $input_file2/res/values-${lang[$counter]} $lngtmp &>>/dev/null
-	
-	if [ -e $input_file2/res/raw-${lang[$counter]} ];
-	then
-		mv $input_file2/res/raw-${lang[$counter]} $lngtmp &>>/dev/null
-	fi
-	
-	if [ -e $input_file2/res/xml-${lang[$counter]} ];
-	then
-		mv $input_file2/res/xml-${lang[$counter]} $lngtmp &>>/dev/null
-	fi
-}
-
-zh_wa_revert() {
-	mv $lngtmp/values-zh $input_file2/res &>>/dev/null
-	mv $lngtmp/values-zh-rCN $input_file2/res &>>/dev/null
-	mv $lngtmp/values-zh-rHK $input_file2/res &>>/dev/null
-	mv $lngtmp/values-zh-rTW $input_file2/res &>>/dev/null
-}
-
-revert_lang() {
-	mv $lngtmp/values-${lang[$counter]} $input_file2/res &>>/dev/null
-	cp $lngtmp/values-${lang[$counter]}-* $input_file2/res &>>/dev/null
-	rm -rf $lngtmp/values-${lang[$counter]}-*
-	
-	if [ -e $lngtmp/raw-${lang[$counter]} ];
-	then
-		mv $lngtmp/raw-${lang[$counter]} $input_file2/res &>>/dev/null
-	fi
-
-	if [ -e $lngtmp/xml-${lang[$counter]} ];
-	then
-		mv $lngtmp/xml-${lang[$counter]} $input_file2/res &>>/dev/null
-	fi
-}
-
-
-# !DEPRECATED
-# Purge unwanted locales from package.
-# Very ugle function, will be reworked.
-language_purge() {
-	echo "Purging languages..."
-	echo "   File: $input_file"
-	
-	if [ "$tmpfs" == "yes" ]
-	then
-		dist=$input_file
-		mkdir -n /tmp/twelve &>>/dev/null
-		output_file=/tmp/twelve/$(rand)
-		input_file2=$output_file
-	else
-		input_file2=$(echo $input_file | sed s/.apk//)
-		output_file=$(echo $input_file | sed s/.apk//)
-	fi
-	
-	java -jar -Xmx${MEM}m $APKTOOL d -s -o $output_file -f $input_file 1>>/dev/null
-	
-	if [ "$?" != "0" ]; then
-		echo "----------"
-		echo "DECOMPILATION FAILED"
-		exit 7
-	fi
-
-	output_file2=$(echo $output_file/out.apk)
-	lngtmp=$input_file2/langs_tmp
-	mkdir $lngtmp
-	counter=0
-
-	while [ $counter -le $lngs ]
-	do
-		counter2=0
-		while [ $counter2 -le 4 ]
-		do
-			if [[ -e $input_file2/res/values-${lang[$counter]} ]] ;
-			then
-				remove_lang
-			fi
-			let "counter += 1"
-			let "counter2 += 1"
-		done
-		
-		java -jar -Xmx${MEM}m $APKTOOL b -f $input_file2 -o $output_file2 &>>/dev/null
-		
-		if [ "$?" != "0" ]; 
-		then
-			let "counter -= 5"
-			counter2=0
-			while [ $counter2 -le 4 ]
-			do
-				if [[ -e $input_file2/res/values-${lang[$counter]} ]] ;
-				then
-					revert_lang
-				fi
-				let "counter += 1"
-				let "counter2 += 1"
-			done
-		else
-			rm $output_file2
-		fi
-	done
-	
-	java -jar -Xmx${MEM}m $APKTOOL b -f $input_file2 -o $output_file2 &>>/dev/null
-	java -jar -Xmx${MEM}m $SIGNAPK $PUPLIC_KEY $PRIVATE_KEY $output_file2 $dist
-	
-	rm -fr $input_file2
-	echo "   Done"
-	exit 0
 }
 
 # Install framework resources
@@ -422,7 +297,7 @@ OPERATION=
 MEM=512
 bypass_check="no"
 
-while getopts "hdRUglfvBSm:cbsILiF" opt
+while getopts "hdRglfvBSm:cbsIiF" opt
 do
 case $opt in
 	h) usage; exit 0;;
@@ -431,11 +306,9 @@ case $opt in
 	S) src="-s";;
 	f) force="-f";;
 	B) bypass_check="yes";;
-	U) tmpfs="yes";;
 	g) GIT="yes";;
 	l) LOGGING="yes";;
 	m) MEM=$OPTARG;;
-	L) OPERATION=lngpurge;;
 	F) OPERATION=framework_install;;
 	b) OPERATION=build;;
 	c) OPERATION=compile;;
@@ -466,7 +339,7 @@ if [ -f "$input_file" ]; then
 		echo
 		exit 1
 	fi
-else if [ "$OPERATION" = "decompile" ] || [ "$OPERATION" = "install_apk" ] || [ "$OPERATION" = "framework_install" ] || [ "$OPERATION" = "lngpurge" ] || [ "$OPERATION" = "sign" ]; then
+else if [ "$OPERATION" = "decompile" ] || [ "$OPERATION" = "install_apk" ] || [ "$OPERATION" = "framework_install" ] || [ "$OPERATION" = "sign" ]; then
 		echo -en "\\033[1;31mDecompile/sign/framework operations needs path to file, not to directory!`$SETCOLOR_NORMAL`"
 		echo
 		exit 1
@@ -481,7 +354,6 @@ echo "Twelve v$VERSION - a tiny wrapper for ApkTool, SignApk & ADB."
 
 if [ "$input_file" != "" ]; then
 	case $OPERATION in
-		lngpurge) echo "Operation: Purge unneeded languages"; language_purge;;
 		compile) echo "Operation: Compile $(echo $(cat ${input_file}/apktool.yml | grep apkFileName | awk '{print $2}') | awk -F. '{print $NF}')-file"; compile;;
 		decompile) echo "Operation: Decompile $(echo $input_file | awk -F. '{print $NF}')-file"; decompile;;
 		build) echo "Operation: Build $(echo $(cat ${input_file}/apktool.yml | grep apkFileName | awk '{print $2}') | awk -F. '{print $NF}')-file"; build;;
