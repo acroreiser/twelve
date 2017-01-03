@@ -7,7 +7,6 @@ PRIVATE_KEY=/opt/twelve/testkey.pk8
 VERSION=2.2
 
 usage() {
-	echo "Twelve $VERSION - a tiny wrapper for ApkTool, SignApk & ADB."
 	echo "Written by A\$teroid <acroreiser@gmail.com>"
 	echo ""
     echo "Usage:"
@@ -340,7 +339,7 @@ if [ -f "$input_file" ]; then
 		exit 1
 	else 
 		if [ "$OPERATION" = "install_apk" ] || [ "$OPERATION" = "framework_install" ] || [ "$OPERATION" = "build_install" ] ; then
-			if [ "$(echo $input_file | awk -F. '{print $NF}')" = "jar" ] || [ "$(echo $input_file | awk -F. '{print $NF}')" != "JAR" ]; then
+			if [ "$(echo $input_file | awk -F. '{print $NF}')" = "jar" ] || [ "$(echo $input_file | awk -F. '{print $NF}')" = "JAR" ]; then
 				echo -en "\\033[1;31mInstall operations unavailable for JAR files!`$SETCOLOR_NORMAL`"
 				echo
 				exit 1
