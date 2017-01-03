@@ -24,13 +24,14 @@ usage() {
 	echo "	-f             Force delete destination directory."
 	echo ""
 	echo "Build operations:"
-	echo "	twelve -c [-f] <path_to_decompiled> - compile apk-file."
+	echo "	twelve -c [-f|-Y] <path_to_decompiled> - compile apk-file."
 	echo "	-f             Skip changes detection and forcefully build all files."
+	echo "	-Y             Make system APK or JAR file."
 	echo ""
-	echo "	twelve -b [-f] <path_to_decompiled> - compile & sign apk-file."
+	echo "	twelve -b [-f|-Y] <path_to_decompiled> - compile & sign apk-file."
 	echo ""
 	echo "Install operations:"
-	echo "	twelve -I [-f] <path_to_decompiled> - compile, sign & install apk-file on connected via USB (ADB) device."
+	echo "	twelve -I [-f|-Y] <path_to_decompiled> - compile, sign & install apk-file on connected via USB (ADB) device."
 	echo "	twelve -i <apk_file> - install apk-file on connected via USB (ADB) device."
 	echo ""
 	echo "	twelve -F <framework_apk> - install framework apk-file for ApkTool."
@@ -197,21 +198,23 @@ compile() {
 		exit 1
 	fi
 	
-	echo "System $apkjar: $input_file" >> $LOG
-	mkdir ${output_file%/*}/sys &>>/dev/null
-	cp -a $output_file ${output_file%/*}/sys/$filename
-	7za a -tzip ${output_file%/*}/sys/$filename ${output_file%/*}/original/* &>> $LOG
+	if [ "$mksysapk" = "yes" ]; then
+		echo "System $apkjar: $input_file" >> $LOG
+		mkdir ${output_file%/*}/sys &>>/dev/null
+		cp -a $output_file ${output_file%/*}/sys/$filename
+		7za a -tzip ${output_file%/*}/sys/$filename ${output_file%/*}/original/* &>> $LOG
 
-	if [ $? -eq 0 ]; then
-		SETSTATUS=$SETCOLOR_SUCCESS
-	else
-		SETSTATUS=$SETCOLOR_FAILURE
-	fi
+		if [ $? -eq 0 ]; then
+			SETSTATUS=$SETCOLOR_SUCCESS
+		else
+			SETSTATUS=$SETCOLOR_FAILURE
+		fi
 	
-	echo -n "   System $apkjar: ${output_file%/*}/sys/$filename  $(tput hpa $(tput cols))$(tput cub 6)[`$SETSTATUS``$SETCOLOR_NORMAL`]"
-	if [ "$SETSTATUS" = "$SETCOLOR_FAILURE" ]; then
-		echo "  Creating system $apkjar failed!" >> $LOG
-		echo
+		echo -n "   System $apkjar: ${output_file%/*}/sys/$filename  $(tput hpa $(tput cols))$(tput cub 6)[`$SETSTATUS``$SETCOLOR_NORMAL`]"
+		if [ "$SETSTATUS" = "$SETCOLOR_FAILURE" ]; then
+			echo "  Creating system $apkjar failed!" >> $LOG
+			echo
+		fi
 	fi
 }
 
@@ -297,13 +300,14 @@ bypass_check="no"
 echo "Twelve v$VERSION - a tiny wrapper for ApkTool, SignApk & ADB."
 echo `date`
 
-while getopts "hdRglfvBSm:cbsIiF" opt
+while getopts "hdRglfvBSm:cbYsIiF" opt
 do
 case $opt in
 	h) usage; exit 0;;
 	v) echo $VERSION; exit 0;;
 	R) res="-r";;
 	S) src="-s";;
+	Y) mksysapk="yes";;
 	f) force="-f";;
 	B) bypass_check="yes";;
 	g) GIT="yes";;
