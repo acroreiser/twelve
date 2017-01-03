@@ -6,10 +6,6 @@ PRIVATE_KEY=/opt/twelve/testkey.pk8
 
 VERSION=2.2
 
-# Exclude from this array your preferred language(s) (excluded: "ru" "uk")
-lang=("af" "am" "ar" "az" "ba" "be" "bg" "bn" "bs" "ca" "cs" "da" "de" "el" "en" "es" "et" "eu" "fa" "fi" "fr" "gl" "gu" "he" "hi" "hr" "hu" "hy" "id" "in" "it" "is" "iw" "ja" "ka" "ko" "kk" "km" "kn" "ky" "kz" "lo" "lt" "lv" "mk" "ml" "mn" "mr" "ms" "ne" "nb" "nl" "no" "pa" "pl" "pt" "rm" "ro" "si" "sk" "sl" "sq" "sr" "sv" "sw" "ta" "te" "tl" "th" "tr" "tt" "ur" "uz" "vi" "zh" "zu")
-lngs=75 # -2
-
 usage() {
 	echo "Twelve $VERSION - a tiny wrapper for ApkTool, SignApk & ADB."
 	echo "Written by A\$teroid <acroreiser@gmail.com>"
