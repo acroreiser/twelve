@@ -170,13 +170,6 @@ check() {
 
 # Just compile package
 compile() {
-	if [ "$bypass_check" = "no" ]; then
-		check
-	else
-		echo -en "\\033[1;33mSource directory checks bypassed!`$SETCOLOR_NORMAL`"
-		echo
-	fi 
-	
 	source_dir=$input_file
 	output_file=$(echo $input_file/$filename)
 	
@@ -343,6 +336,13 @@ else if [ "$OPERATION" = "decompile" ] || [ "$OPERATION" = "install_apk" ] || [ 
 		echo -en "\\033[1;31mDecompile/sign/framework operations needs path to file, not to directory!`$SETCOLOR_NORMAL`"
 		echo
 		exit 1
+	else 
+		if [ "$bypass_check" = "no" ]; then
+			check
+		else
+			echo -en "\\033[1;33mSource directory checks bypassed!`$SETCOLOR_NORMAL`"
+			echo
+		fi 
 	fi
 fi
 
