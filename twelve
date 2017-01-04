@@ -1,12 +1,9 @@
-#!/bin/bash
-APKTOOL=/opt/twelve/apktool.jar
-SIGNAPK=/opt/twelve/signapk.jar
-PUPLIC_KEY=/opt/twelve/testkey.x509.pem
-PRIVATE_KEY=/opt/twelve/testkey.pk8
 
 VERSION=2.2
 
 usage() {
+	echo "Twelve v$VERSION - a tiny wrapper for ApkTool, SignApk & ADB."
+	echo `date`
 	echo "Written by A\$teroid <acroreiser@gmail.com>"
 	echo ""
     echo "Usage:"
@@ -292,8 +289,7 @@ OPERATION=
 MEM=512
 bypass_check="no"
 
-echo "Twelve v$VERSION - a tiny wrapper for ApkTool, SignApk & ADB."
-echo `date`
+
 
 while getopts "hdRglfvBSm:cbYsIiF" opt
 do
@@ -323,6 +319,9 @@ if [ "$#" -lt "2" ]; then
 	usage
 	exit 0
 fi
+
+echo "Twelve v$VERSION - a tiny wrapper for ApkTool, SignApk & ADB."
+echo `date`
 
 if [ "$LOGGING" = "yes" ]; then
 	LOG="$(pwd)/twelve.log"
