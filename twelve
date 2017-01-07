@@ -4,7 +4,7 @@ SIGNAPK=
 PUPLIC_KEY=
 PRIVATE_KEY=
 
-VERSION=2.2
+VERSION=2.2.1
 
 usage() {
 	echo "Twelve v$VERSION - a tiny wrapper for ApkTool, SignApk & ADB."
@@ -170,8 +170,27 @@ check() {
 	fi
 }
 
+mediatek-res_workaround() {
+	echo -en "	\\033[1;34mTrying mediatek workaround...`$SETCOLOR_NORMAL`"
+	echo
+	
+	rm -f $source_dir/apktool.yml-o
+	mv $source_dir/apktool.yml $source_dir/apktool.yml-o
+	cat $source_dir/apktool.yml-o | sed '/  - 1/ a\  - 2' >  $source_dir/apktool.yml
+	
+	java -jar -Xmx${MEM}m $APKTOOL b $force $input_file -o $output_file &>> $LOG
+
+	if [ $? -eq 0 ]; then
+		SETSTATUS=$SETCOLOR_SUCCESS
+		rm -f $source_dir/apktool.yml-o
+	else
+		SETSTATUS=$SETCOLOR_FAILURE
+	fi
+}
+
 # Just compile package
 compile() {
+	MTRWA=false
 	source_dir=$input_file
 	output_file=$(echo $input_file/$filename)
 	
@@ -179,12 +198,19 @@ compile() {
 	echo "Source: $input_file" >> $LOG
 	echo "Compile $apkjar: $output_file" >> $LOG
 
-	java -jar -Xmx${MEM}m $APKTOOL b $force $input_file -o $output_file  &>> $LOG
-	
+	MTRWA=$(java -jar -Xmx${MEM}m $APKTOOL b $force $input_file -o $output_file  2>&1)
 	if [ $? -eq 0 ]; then
 		SETSTATUS=$SETCOLOR_SUCCESS
+		echo $MTRWA >> $LOG
 	else
 		SETSTATUS=$SETCOLOR_FAILURE
+		if [ "$(echo $MTRWA | grep "com.mediatek")" != "false" ]; then
+			echo $MTRWA >> $LOG
+			echo "  Compiling $apkjar failed!" >> $LOG
+			echo "  Trying to mediatek-res workaround..." >> $LOG
+			mediatek-res_workaround
+		fi
+		echo $MTRWA >> $LOG
 	fi
 
 	echo -n "   Compile $apkjar: $output_file  $(tput hpa $(tput cols))$(tput cub 6)[`$SETSTATUS``$SETCOLOR_NORMAL`]"
@@ -284,8 +310,8 @@ install_apk() {
 
 # !!!! Entering TwelVe. !!!!
 SETCOLOR_SUCCESS="echo -en \\033[1;32mOK"
-SETCOLOR_FAILURE="echo -en \\033[1;31mERR"
 SETCOLOR_WARNING="echo -en \\033[1;33mWARN"
+SETCOLOR_FAILURE="echo -en \\033[1;31mERR"
 SETCOLOR_NORMAL="echo -en \\033[0;39m"
 SETSTATUS=$SETCOLOR_SUCCESS
 
