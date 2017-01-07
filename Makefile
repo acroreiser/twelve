@@ -1,7 +1,7 @@
 .PHONY: deb clean
 
 PWD := $(shell pwd)
-INST_SIZE := $(shell du -shk deb | sed s/deb//)
+INST_SIZE = $(shell du -shk deb | sed s/deb//)
 PKG_VERSION := $(shell $(PWD)/twelve -v)
 all: zip deb
 	
@@ -36,7 +36,7 @@ pre-package: clean
 	@cd $(PWD)/deb && hashdeep -c md5 -lr usr > DEBIAN/md5sums
 	
 clean:
-	@rm -rf  deb dist
+	@rm -rf  deb dist *.log
 	
 clean-all: clean
 	@rm -f *.deb *.zip
