@@ -1,29 +1,42 @@
 .PHONY: deb clean
 
 PWD := $(shell pwd)
+PKG_VERSION := $(shell $(PWD)/twelve -v)
+all: zip deb
+	
+zip: clean
+	@echo "Making portable zip..."
+	@mkdir -m 0755 dist
+	@cp -a prebuilt dist
+	@cat twelve | sed -e 's/^APKTOOL=.*/APKTOOL=prebuilt\/apktool.jar/' -e 's/^SIGNAPK=.*/SIGNAPK=prebuilt\/signapk.jar/' -e 's/^PUPLIC_KEY=.*/PUPLIC_KEY=prebuilt\/testkey.x509.pem/' -e 's/^PRIVATE_KEY=.*/PRIVATE_KEY=prebuilt\/testkey.pk8/' > dist/twelve
+	@chmod 0755 dist/twelve
+	@zip -5r twelve-`$(PWD)/dist/twelve -v`.zip dist
+	@echo "Portable package: `ls *.zip`"
 
-all: deb
 
-deb: clean
-	@echo "Creating needed dirs..."
-	@mkdir deb/usr
-	@mkdir deb/usr/bin
-	@mkdir deb/opt
-	@mkdir deb/opt/twelve
-	@echo "Preparing files for packaging..."
-	@echo "#!/bin/bash" > deb/usr/bin/twelve
-	@echo "APKTOOL=/opt/twelve/apktool.jar" >> deb/usr/bin/twelve
-	@echo "SIGNAPK=/opt/twelve/signapk.jar" >> deb/usr/bin/twelve
-	@echo "PUPLIC_KEY=/opt/twelve/testkey.x509.pem" >> deb/usr/bin/twelve
-	@echo "PRIVATE_KEY=/opt/twelve/testkey.pk8" >> deb/usr/bin/twelve 
-	@cat twelve >> deb/usr/bin/twelve
-	@chmod 0755 deb/usr/bin/twelve
-	@cp prebuilt/* deb/opt/twelve
-	@cd $(PWD)/deb && md5deep -lr usr opt > DEBIAN/md5sums
+deb: pre-package
 	@echo "Creating debian package..."
 	@fakeroot dpkg-deb --build deb twelve-`$(PWD)/deb/usr/bin/twelve -v`.deb 1>>/dev/null
 	@echo "Package: `ls *.deb`"
+
+pre-package: clean
+	@echo "Creating needed dirs..."
+	@mkdir deb
+	@cp -a DEBIAN deb
+	@mkdir deb/usr
+	@mkdir deb/usr/bin
+	@mkdir deb/usr/share
+	@mkdir deb/usr/share/twelve
+	@echo "Preparing files for packaging..."
+	@cat twelve | sed -e 's/^APKTOOL=.*/APKTOOL=\/usr\/share\/twelve\/apktool.jar/' -e 's/^SIGNAPK=.*/SIGNAPK=\/usr\/share\/twelve\/signapk.jar/' -e 's/^PUPLIC_KEY=.*/PUPLIC_KEY=\/usr\/share\/twelve\/testkey.x509.pem/' -e 's/^PRIVATE_KEY=.*/PRIVATE_KEY=\/usr\/share\/twelve\/testkey.pk8/' > deb/usr/bin/twelve
+	@chmod 0755 deb/usr/bin/twelve
+	@cat DEBIAN/control | sed 's/^Version:.*/Version: $(PKG_VERSION)/' > deb/DEBIAN/control
+	@cp prebuilt/* deb/usr/share/twelve
+	@cd $(PWD)/deb && md5deep -lr usr > DEBIAN/md5sums
 	
 clean:
-	@rm -rf  deb/usr deb/opt *.deb deb/DEBIAN/md5sums dist
+	@rm -rf  deb dist
+	
+clean-all: clean
+	@rm -f *.deb *.zip
 	
