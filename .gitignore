@@ -12,6 +12,7 @@
 .*
 *.zip
 *.deb
+*.log
 
 #
 # Out directory
