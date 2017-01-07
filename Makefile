@@ -1,6 +1,7 @@
 .PHONY: deb clean
 
 PWD := $(shell pwd)
+INST_SIZE := $(shell du -shk deb | sed s/deb//)
 PKG_VERSION := $(shell $(PWD)/twelve -v)
 all: zip deb
 	
@@ -16,6 +17,7 @@ zip: clean
 
 deb: pre-package
 	@echo "Creating debian package..."
+	@cat DEBIAN/control | sed -e 's/^Version:.*/Version: $(PKG_VERSION)/' -e 's/^Installed-Size:.*/Installed-Size: $(INST_SIZE)/' > deb/DEBIAN/control
 	@fakeroot dpkg-deb --build deb twelve-`$(PWD)/deb/usr/bin/twelve -v`.deb 1>>/dev/null
 	@echo "Package: `ls *.deb`"
 
@@ -30,9 +32,8 @@ pre-package: clean
 	@echo "Preparing files for packaging..."
 	@cat twelve | sed -e 's/^APKTOOL=.*/APKTOOL=\/usr\/share\/twelve\/apktool.jar/' -e 's/^SIGNAPK=.*/SIGNAPK=\/usr\/share\/twelve\/signapk.jar/' -e 's/^PUPLIC_KEY=.*/PUPLIC_KEY=\/usr\/share\/twelve\/testkey.x509.pem/' -e 's/^PRIVATE_KEY=.*/PRIVATE_KEY=\/usr\/share\/twelve\/testkey.pk8/' > deb/usr/bin/twelve
 	@chmod 0755 deb/usr/bin/twelve
-	@cat DEBIAN/control | sed 's/^Version:.*/Version: $(PKG_VERSION)/' > deb/DEBIAN/control
 	@cp prebuilt/* deb/usr/share/twelve
-	@cd $(PWD)/deb && md5deep -lr usr > DEBIAN/md5sums
+	@cd $(PWD)/deb && hashdeep -c md5 -lr usr > DEBIAN/md5sums
 	
 clean:
 	@rm -rf  deb dist
