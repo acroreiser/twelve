@@ -11,7 +11,7 @@ zip: clean
 	@cp -a prebuilt dist
 	@cat twelve | sed -e 's/^APKTOOL=.*/APKTOOL=prebuilt\/apktool.jar/' -e 's/^SIGNAPK=.*/SIGNAPK=prebuilt\/signapk.jar/' -e 's/^PUPLIC_KEY=.*/PUPLIC_KEY=prebuilt\/testkey.x509.pem/' -e 's/^PRIVATE_KEY=.*/PRIVATE_KEY=prebuilt\/testkey.pk8/' > dist/twelve
 	@chmod 0755 dist/twelve
-	@zip -5r twelve-`$(PWD)/dist/twelve -v`.zip dist
+	@zip -5r twelve-`$(PWD)/twelve -v`.zip dist
 	@echo "Portable package: `ls *.zip`"
 
 
