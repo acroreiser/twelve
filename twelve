@@ -4,7 +4,7 @@ SIGNAPK=
 PUPLIC_KEY=
 PRIVATE_KEY=
 
-VERSION=2.2.1
+VERSION=2.3
 
 usage() {
 	echo "Twelve v$VERSION - a tiny wrapper for ApkTool, SignApk & ADB."
@@ -19,6 +19,12 @@ usage() {
 	echo "	-S             Do not decode sources."
 	echo "	-g             Init GIT repository for easily changes tracking."
 	echo "	-f             Force delete destination directory."
+	echo ""
+	echo "Applying patches:"
+	echo "	twelve -p </path/to/patch> [-r|-f|-Y] <file> - decompile apk/jar-file."
+	echo "	-r             Revert patch."
+	echo "	-f             Force overwrite destination directory."
+	echo "	-Y             Make system APK or JAR file."
 	echo ""
 	echo "Build operations:"
 	echo "	twelve -c [-f|-Y] <path_to_decompiled> - compile apk-file."
@@ -308,6 +314,70 @@ install_apk() {
 	echo -n "   Install: $input_file  $(tput hpa $(tput cols))$(tput cub 6)[`$SETSTATUS``$SETCOLOR_NORMAL`]"
 }
 
+apply_patch_apk() {
+wdir=$(pwd)
+cd $output_file
+if [ "$REVERT" = "yes" ]; then
+	echo "Reverting $diff_file"
+	rev="-Rp1"
+else
+	echo "Applying $diff_file"
+	rev="-Np1"
+fi
+patch $rev --dry-run -t -i $diff_file &>> $LOG
+if [ $? -eq 0 ]; then
+   	SETSTATUS=$SETCOLOR_SUCCESS
+	echo -n "   Checking...  $(tput hpa $(tput cols))$(tput cub 6)[`$SETSTATUS``$SETCOLOR_NORMAL`]"
+	echo
+	echo "-----"
+	patch $rev --no-backup-if-mismatch -t -i $diff_file
+	if [ $? -eq 0 ]; then
+		echo "-----"
+		echo -en "\\033[1;32mSuccess!\\033[0;39m"
+		echo
+	else
+		echo "-----"
+		echo -en "\\033[1;31mFailed.\\033[0;39m"
+		echo
+		cd $wdir
+		rm -fr $output_file
+		exit 1
+	fi
+	cd $wdir
+else
+	SETSTATUS=$SETCOLOR_FAILURE
+	echo -n "   Checking...  $(tput hpa $(tput cols))$(tput cub 6)[`$SETSTATUS``$SETCOLOR_NORMAL`]"
+	cd $wdir
+	rm -fr $output_file
+	echo
+	exit 1
+fi
+}
+
+patch_apk() {
+decompile
+echo
+apply_patch_apk
+echo "Building patched file..."
+input_file=$output_file
+check
+compile 
+input_file=$output_file
+sign
+if [ $? -eq 0 ]; then
+ 	SETSTATUS=$SETCOLOR_SUCCESS
+else
+	SETSTATUS=$SETCOLOR_FAILURE
+fi
+echo
+input_file=$output_file
+
+filename=$(cat ${source_dir}/apktool.yml | grep apkFileName | awk '{print $2}')
+mv $input_file $source_dir/$filename
+echo -n "Patch: $(readlink -f $source_dir/$filename)  $(tput hpa $(tput cols))$(tput cub 6)[`$SETSTATUS``$SETCOLOR_NORMAL`]"
+}
+
+
 # !!!! Entering TwelVe. !!!!
 SETCOLOR_SUCCESS="echo -en \\033[1;32mOK"
 SETCOLOR_WARNING="echo -en \\033[1;33mWARN"
@@ -322,7 +392,7 @@ bypass_check="no"
 
 
 
-while getopts "hdRglfvBSm:cbYsIiF" opt
+while getopts "hdRrglp:fvBSm:cbYsIiF" opt
 do
 case $opt in
 	h) usage; exit 0;;
@@ -332,10 +402,12 @@ case $opt in
 	Y) mksysapk="yes";;
 	f) force="-f";;
 	B) bypass_check="yes";;
+	r) REVERT="yes";;
 	g) GIT="yes";;
 	l) LOGGING="yes";;
 	m) MEM=$OPTARG;;
 	F) OPERATION=framework_install;;
+	p) OPERATION=patch_apk; diff_file=$OPTARG;;
 	b) OPERATION=build;;
 	c) OPERATION=compile;;
 	I) OPERATION=build_install;;
@@ -408,6 +480,7 @@ if [ "$input_file" != "" ]; then
 		build) echo "Operation: Build $(echo $(cat ${input_file}/apktool.yml | grep apkFileName | awk '{print $2}') | awk -F. '{print $NF}')-file"; build;;
 		build_install) echo "Operation: Build and Install apk-file"; build_install;;
 		install_apk)  echo "Operation: Install apk-file"; install_apk;;
+		patch_apk) echo "Operation: patch"; res=" "; src=" "; bypass_check="no"; patch_apk;;
 		sign) echo "Operation: Sign file"; sign;;
 		framework_install) echo "Operation: Install framework file"; framework_install;;
 	esac
