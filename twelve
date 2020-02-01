@@ -4,7 +4,7 @@ SIGNAPK=
 PUPLIC_KEY=
 PRIVATE_KEY=
 
-VERSION=2.5
+VERSION=2.6
 
 usage() {
 	echo "Twelve v$VERSION - a tiny wrapper for ApkTool, SignApk & ADB."
