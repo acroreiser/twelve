@@ -4,7 +4,7 @@ Section: devel
 Priority: optional
 Version: 0
 Package: twelve
-Architecture: amd64
+Architecture: all
 Depends: p7zip-full, bash, sed, git
 Description: Twelve - a tiny wrapper for ApkTool, SignApk & ADB.
 Installed-Size: 7890
